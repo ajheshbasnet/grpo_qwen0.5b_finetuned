@@ -18,7 +18,7 @@ This project demonstrates a three-phase approach to improving mathematical reaso
 | Phase 2 | Chain of Thought | +15-20% | Moderate gain |
 | Phase 3 | GRPO Fine-tuning | +40-50% | Significant gain |
 
-![All Evaluation Comparison](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/all_evaluation.png)
+![All Evaluation Comparison](eval_graphs/all_evaluation.png)
 
 ## Project Structure
 
@@ -30,6 +30,7 @@ Ninebar/
 │   ├── normal_all.png         # Phase 1 results
 │   ├── cot_all.png            # Phase 2 results
 │   ├── after_finetune_all.png # Phase 3 results
+│   ├── after_finetune_reparaphr.png # Phase 3 on paraphrased questions
 │   ├── all_evaluation.png     # Combined comparison
 │   ├── performance_gap.png    # Performance gap analysis
 │   └── mean_std_scatter.png   # Variance analysis
@@ -45,7 +46,7 @@ We created a comprehensive synthetic dataset focusing on mathematical reasoning 
 
 - **Training Set**: 1,000 examples (difficulty levels 1-7)
 - **Evaluation Set**: 100 examples (difficulty levels 5-10)
-- **Paraphrased Eval Set**: 100 examples for robustness testing
+- **Paraphrased Eval Set**: 100 examples for robustness testing (same questions with different wording)
 
 ### Question Templates
 
@@ -134,7 +135,7 @@ Each example contains:
 - Evaluated on 100-question test set
 
 **Results**:
-![Phase 1 - Normal Prompting](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/normal_all.png)
+![Phase 1 - Normal Prompting](eval_graphs/normal_all.png)
 
 ### Phase 2: Chain of Thought Prompting
 
@@ -146,7 +147,7 @@ Each example contains:
 - Evaluated on identical 100-question test set for fair comparison
 
 **Results**:
-![Phase 2 - Chain of Thought](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/cot_all.png)
+![Phase 2 - Chain of Thought](eval_graphs/cot_all.png)
 
 **Improvement**: Moderate gains over baseline through better prompting structure
 
@@ -180,9 +181,23 @@ GRPOConfig(
 **Evaluation**: Same 100-question test set
 
 **Results**:
-![Phase 3 - After Fine-tuning](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/after_finetune_all.png)
+![Phase 3 - After Fine-tuning](eval_graphs/after_finetune_all.png)
 
 **Improvement**: Significant performance gains through policy optimization
+
+### Phase 3: Paraphrased Question Evaluation
+
+**Approach**: Testing fine-tuned model on paraphrased versions of evaluation questions
+
+**Methodology**:
+- Same 100 evaluation questions with different wording
+- Tests model robustness to phrasing variations
+- Ensures model learned reasoning patterns, not just memorization
+
+**Results**:
+![Phase 3 - Paraphrased Questions](eval_graphs/after_finetune_reparaphr.png)
+
+**Insight**: Model maintains strong performance even with rephrased questions, demonstrating genuine reasoning capability rather than memorization
 
 ## Performance Analysis
 
@@ -190,7 +205,7 @@ GRPOConfig(
 
 The mean and standard deviation across 4 generations per question:
 
-![Mean and Std Dev Scatter](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/mean_std_scatter.png)
+![Mean and Std Dev Scatter](eval_graphs/mean_std_scatter.png)
 
 This analysis shows:
 - Consistency improvements across phases
@@ -201,7 +216,7 @@ This analysis shows:
 
 Comparison across all three phases:
 
-![Performance Gap](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/performance_gap.png)
+![Performance Gap](eval_graphs/performance_gap.png)
 
 Key insights:
 - Phase 1 establishes baseline capabilities
@@ -219,8 +234,7 @@ Key insights:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd Ninebar
+git clone https://github.com/ajheshbasnet/grpo_qwen0.5b_finetuned.git
 
 # Create virtual environment
 python -m venv venv
@@ -239,7 +253,8 @@ pip install datasets matplotlib wandb
 3. Run cells sequentially to:
    - Generate synthetic dataset
    - Load and configure the model
-   - Run Phase 1, 2, and 3 evaluations
+   - To Run Phase 1 (skip the training trainer.train() cell and go for the very last testing section),
+   -  Phase 2 edit the prompt with run step wise step, and Phase 3 after training the model. 
    - Train with GRPO
    - Generate evaluation graphs
 
@@ -248,7 +263,7 @@ pip install datasets matplotlib wandb
 ### Scoring
 - **Correct Answer**: 1 point
 - **Incorrect Answer**: 0 points
-- **Per Question**: Mean score across N generations (N=4 for Phases 1-2, N=8 for Phase 3)
+- **Per Question**: Mean score across N generations (N=4 for Evaluation and N = 8 for the Training)
 
 ### Metrics Tracked
 - Mean accuracy per question
@@ -263,19 +278,6 @@ pip install datasets matplotlib wandb
 3. **Consistency**: Fine-tuned model shows lower variance across generations
 4. **Template Difficulty**: Performance varies by question type and difficulty level
 5. **Small Model Potential**: Even 0.5B models can achieve good math reasoning with proper training
-
-## Citation
-
-If you use this project or dataset, please cite:
-
-```bibtex
-@misc{math_reasoning_grpo,
-  title={Math Reasoning with GRPO Fine-Tuning},
-  author={Your Name},
-  year={2024},
-  howpublished={\url{https://github.com/yourusername/Ninebar}}
-}
-```
 
 ## Contributing
 
