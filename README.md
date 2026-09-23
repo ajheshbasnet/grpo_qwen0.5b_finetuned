@@ -219,8 +219,7 @@ Key insights:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd Ninebar
+git clone https://github.com/ajheshbasnet/grpo_qwen0.5b_finetuned.git
 
 # Create virtual environment
 python -m venv venv
@@ -239,7 +238,8 @@ pip install datasets matplotlib wandb
 3. Run cells sequentially to:
    - Generate synthetic dataset
    - Load and configure the model
-   - Run Phase 1, 2, and 3 evaluations
+   - To Run Phase 1 (skip the training trainer.train() cell and go for the very last testing section),
+   -  Phase 2 edit the prompt with run step wise step, and Phase 3 after training the model. 
    - Train with GRPO
    - Generate evaluation graphs
 
@@ -248,7 +248,7 @@ pip install datasets matplotlib wandb
 ### Scoring
 - **Correct Answer**: 1 point
 - **Incorrect Answer**: 0 points
-- **Per Question**: Mean score across N generations (N=4 for Phases 1-2, N=8 for Phase 3)
+- **Per Question**: Mean score across N generations (N=4 for Evaluation and N = 8 for the Training)
 
 ### Metrics Tracked
 - Mean accuracy per question
@@ -263,19 +263,6 @@ pip install datasets matplotlib wandb
 3. **Consistency**: Fine-tuned model shows lower variance across generations
 4. **Template Difficulty**: Performance varies by question type and difficulty level
 5. **Small Model Potential**: Even 0.5B models can achieve good math reasoning with proper training
-
-## Citation
-
-If you use this project or dataset, please cite:
-
-```bibtex
-@misc{math_reasoning_grpo,
-  title={Math Reasoning with GRPO Fine-Tuning},
-  author={Your Name},
-  year={2024},
-  howpublished={\url{https://github.com/yourusername/Ninebar}}
-}
-```
 
 ## Contributing
 
