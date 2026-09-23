@@ -18,7 +18,7 @@ This project demonstrates a three-phase approach to improving mathematical reaso
 | Phase 2 | Chain of Thought | +15-20% | Moderate gain |
 | Phase 3 | GRPO Fine-tuning | +40-50% | Significant gain |
 
-![All Evaluation Comparison](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/all_evaluation.png)
+![All Evaluation Comparison](eval_graphs/all_evaluation.png)
 
 ## Project Structure
 
@@ -134,7 +134,7 @@ Each example contains:
 - Evaluated on 100-question test set
 
 **Results**:
-![Phase 1 - Normal Prompting](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/normal_all.png)
+![Phase 1 - Normal Prompting](eval_graphs/normal_all.png)
 
 ### Phase 2: Chain of Thought Prompting
 
@@ -146,7 +146,7 @@ Each example contains:
 - Evaluated on identical 100-question test set for fair comparison
 
 **Results**:
-![Phase 2 - Chain of Thought](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/cot_all.png)
+![Phase 2 - Chain of Thought](eval_graphs/cot_all.png)
 
 **Improvement**: Moderate gains over baseline through better prompting structure
 
@@ -180,7 +180,7 @@ GRPOConfig(
 **Evaluation**: Same 100-question test set
 
 **Results**:
-![Phase 3 - After Fine-tuning](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/after_finetune_all.png)
+![Phase 3 - After Fine-tuning](eval_graphs/after_finetune_all.png)
 
 **Improvement**: Significant performance gains through policy optimization
 
@@ -190,7 +190,7 @@ GRPOConfig(
 
 The mean and standard deviation across 4 generations per question:
 
-![Mean and Std Dev Scatter](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/mean_std_scatter.png)
+![Mean and Std Dev Scatter](eval_graphs/mean_std_scatter.png)
 
 This analysis shows:
 - Consistency improvements across phases
@@ -201,7 +201,7 @@ This analysis shows:
 
 Comparison across all three phases:
 
-![Performance Gap](https://raw.githubusercontent.com/ajheshbasnet/grpo_qwen0.5b_finetuned/main/eval_graphs/performance_gap.png)
+![Performance Gap](eval_graphs/performance_gap.png)
 
 Key insights:
 - Phase 1 establishes baseline capabilities
