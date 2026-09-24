@@ -26,6 +26,7 @@ Used for creating the mathematical template functions:
 - Assisted with the synthetic data generation logic
 - Helped structure the question-answer format for the dataset
 
+#### ChatGPT
 Used for writing polish only, not content or ideas:
 - All wording, explanations, and technical decisions in the documentation are our own
 - ChatGPT was used to clean up grammar and phrasing in written sections (README, this workflow doc) so they read clearly and without errors
