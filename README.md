@@ -1,31 +1,81 @@
 # Math Reasoning with GRPO Fine-Tuning
 
-A comprehensive project exploring the enhancement of mathematical reasoning capabilities in small language models through progressive prompting optimization and GRPO (Group Relative Policy Optimization) fine-tuning.
+## Introduction
 
-## Overview
+This project is a small, timeboxed research study (Option 1 of the exercise:
+small-model post-training and behaviour study) into how a lightweight
+adaptation step changes a small language model's behaviour on a synthetic,
+programmatically verifiable task.
 
-This project demonstrates a three-phase approach to improving mathematical reasoning performance on a 0.5B parameter model:
+We built a fully synthetic, deterministic math reasoning dataset — 1,000
+training examples and 100 evaluation examples, each a word problem with a
+single, exactly-checkable integer answer, generated and verified entirely by
+code rather than by hand-labeling. We then ran a controlled, three-phase
+comparison on **Qwen2.5-0.5B-Instruct**:
 
-- **Phase 1**: Baseline evaluation with normal prompting
-- **Phase 2**: Chain of Thought (CoT) prompting optimization
-- **Phase 3**: GRPO fine-tuning for significant performance gains
+1. Baseline behaviour with a plain prompt.
+2. Baseline behaviour with a stronger, zero-shot chain-of-thought prompt.
+3. Behaviour after GRPO (Group Relative Policy Optimization) fine-tuning,
+   using the same deterministic scorer as both the evaluation metric and the
+   RL reward signal.
 
-## Results Summary
+This structure exists specifically so that improvement from *better prompting*
+and improvement from *actual adaptation* can be told apart, rather than
+conflated into a single "it got better" number — which is the core question
+this study is designed to answer.
 
-| Phase | Approach | Mean Score | Improvement |
-|-------|----------|------------|-------------|
-| Phase 1 | Normal Prompting | Baseline | - |
-| Phase 2 | Chain of Thought | +15-20% | Moderate gain |
-| Phase 3 | GRPO Fine-tuning | +40-50% | Significant gain |
+## Problem and Users
 
-![All Evaluation Comparison](eval_graphs/all_evaluation.png)
+**Problem:** small (sub-1B parameter) language models are known to struggle
+with precise multi-step arithmetic reasoning. It's an open, practical
+question how much of that gap can be closed cheaply — via prompting alone,
+versus a lightweight RL-based adaptation step — on hardware and a timeline a
+single engineer can realistically access (a few free-tier GPU hours, not a
+training cluster).
 
-## Project Structure
+**Who this is for:** anyone evaluating whether a small, cheaply-adaptable
+model is "good enough" for a constrained-domain reasoning task before
+committing to a larger model or a heavier training budget. The
+methodology here — synthetic verifiable data, a deterministic scorer doubling
+as reward, and an explicit prompting-vs-training baseline split — is intended
+to be a reusable template for that kind of decision, not specific to math.
+
+## Architecture and Workflow
+
+The pipeline is a single reproducible path, all runnable from
+`src/grpo_training.ipynb`:
+
+```
+synthetic data generation
+        │
+        ▼
+Phase 1: baseline eval (plain prompt, base model)
+        │
+        ▼
+Phase 2: baseline eval (zero-shot CoT prompt, base model)
+        │
+        ▼
+Phase 3: GRPO training (reward = same deterministic scorer used for eval)
+        │
+        ▼
+Phase 3: post-training eval (plain prompt, adapted model)
+        │
+        ▼
+Phase 3: robustness eval (paraphrased questions, adapted model)
+        │
+        ▼
+graphs + failure analysis + report (this README)
+```
+
+Each phase reuses the same 100-question evaluation set (and its paraphrased
+variant) so every comparison in the results below is apples-to-apples.
+
+### Project Structure
 
 ```
 Ninebar/
 ├── src/
-│   └── grpo_training.ipynb    # Main training pipeline
+│   └── grpo_training.ipynb    # Main training pipeline (single notebook, see "Setup" below)
 ├── eval_graphs/               # Evaluation visualizations
 │   ├── normal_all.png         # Phase 1 results
 │   ├── cot_all.png            # Phase 2 results
@@ -34,19 +84,25 @@ Ninebar/
 │   ├── all_evaluation.png     # Combined comparison
 │   ├── performance_gap.png    # Performance gap analysis
 │   └── mean_std_scatter.png   # Variance analysis
+├── AGENT_WORKFLOW.md          # Where/how AI tools were used
 └── README.md
-
 ```
 
 ## Dataset
 
 ### Synthetic Math Reasoning Dataset
 
-We created a comprehensive synthetic dataset focusing on mathematical reasoning tasks:
+The dataset is fully synthetic and templated, generated and verified entirely
+by code (no scraped or human-labeled data), so there is no risk of the base
+model having seen these exact problems during pretraining:
 
 - **Training Set**: 1,000 examples (difficulty levels 1-7)
-- **Evaluation Set**: 100 examples (difficulty levels 5-10)
-- **Paraphrased Eval Set**: 100 examples for robustness testing (same questions with different wording)
+- **Evaluation Set**: 100 examples (difficulty levels 5-10) — deliberately
+  harder than the training range, to check generalization rather than
+  memorization of the train distribution
+- **Paraphrased Eval Set**: 100 examples, same underlying questions and
+  answers as the evaluation set with reworded phrasing, for robustness
+  testing
 
 ### Question Templates
 
@@ -107,6 +163,14 @@ Each example contains:
 - `_answer`: Correct numerical answer
 - `_template`: Template type used
 - `_difficulty`: Difficulty level (1-10)
+
+### Determinism guarantees
+
+Every example's answer is computed and verified programmatically at
+generation time (not by eye), every question is checked for uniqueness within
+its split, and the train/eval splits are checked to have zero question
+overlap — so the dataset itself is a deterministic, auditable artifact, not
+just a one-off script output.
 
 ## Model
 
@@ -198,6 +262,16 @@ GRPOConfig(
 ![Phase 3 - Paraphrased Questions](eval_graphs/after_finetune_reparaphr.png)
 
 **Insight**: Model maintains strong performance even with rephrased questions, demonstrating genuine reasoning capability rather than memorization
+
+## Results Summary
+
+| Phase | Approach | Mean Score | Improvement |
+|-------|----------|------------|-------------|
+| Phase 1 | Normal Prompting | Baseline | - |
+| Phase 2 | Chain of Thought | +15-20% | Moderate gain |
+| Phase 3 | GRPO Fine-tuning | +34% | Significant gain |
+
+![All Evaluation Comparison](eval_graphs/all_evaluation.png)
 
 ## Performance Analysis
 
@@ -333,18 +407,85 @@ Worth noting as context, even where not directly isolated and measured here:
   *new* value each time, not the original value — a common small-model
   mistake is applying every percentage against the original base.
 
-**What we'd try next:** oversample multi-operator/mixed-precedence problems
-during training, add an explicit "evaluate parentheses and multiplication
-before addition/subtraction" cue to the training prompt template, standardize
-eval-time decoding to the tuned `top_p=0.95`/`temperature=0.5` setting found
-in failure case 2, and consider a curriculum that increases operator-precedence
-and chain-length complexity gradually rather than uniformly sampling difficulty.
+## Assumptions and Tradeoffs
+
+- **Bare-integer completions over full worked reasoning**: the training
+  target is a single number, not the reasoning trace. This makes the reward
+  function and scoring trivially exact-match, at the cost of not directly
+  supervising the reasoning steps themselves — a tradeoff made deliberately
+  to keep the whole pipeline simple and auditable within the time budget.
+- **Eval difficulty deliberately set harder than train difficulty** (5-10 vs
+  1-7), to test generalization rather than memorization — this makes the
+  reported numbers a slightly harder, more honest test than an
+  identical-distribution eval would be.
+- **A single notebook rather than modular `.py` scripts**: chosen because
+  the project was run entirely on free-tier Google Colab and Kaggle GPUs
+  rather than a persistent local/cloud environment, where a single
+  self-contained notebook is significantly easier to run start-to-finish in
+  one session without environment/state management overhead.
+- **LoRA target modules limited to `q_proj`, `k_proj`, `o_proj`** (not all
+  attention/MLP projections) and a modest rank/alpha (8/16), chosen to keep
+  the adapted parameter count and memory footprint small enough for free-tier
+  GPU memory limits.
+- **GRPO reward is a simple binary exact-match** (extracted answer appears
+  correctly among the last few generated numbers), not a partial-credit or
+  reasoning-quality reward — simpler to implement and fully deterministic,
+  at the cost of not rewarding "close but wrong" reasoning at all.
+
+## Limitations
+
+- **No hyperparameter sweep was performed.** Learning rate, LoRA rank/alpha,
+  `beta` (KL coefficient), and `num_generations` were each set once, based on
+  reasonable defaults and hardware constraints, rather than searched. It is
+  likely that a different configuration would produce meaningfully different
+  (possibly better) results — see Next Steps.
+- **Single training run, single seed** for the main reported before/after
+  numbers; the paraphrased-eval set provides a robustness check on wording,
+  but a second training seed to check training-variance (not just
+  eval-sampling variance) was not run due to compute/time constraints.
+- **GRPO has a structural ceiling tied to base model strength** (see Failure
+  Analysis #3) — this is not a bug to fix but a real limitation of the
+  method as applied to a 0.5B model on this task.
+- **Free-tier compute (Colab + Kaggle)** constrained batch sizes, sequence
+  lengths, and training duration; the study is explicitly a small, timeboxed
+  demonstration of methodology, not a claim about the ceiling of what GRPO
+  can achieve on this task with more resources.
+
+## Next Steps
+
+With more compute and time, the following would be the natural next
+iterations:
+
+- **Scale up the dataset size.** The current 1,000-example training set was
+  sized to fit comfortably within free-tier GPU session limits; a larger,
+  more difficulty-diverse training set would likely narrow some of the
+  observed failure modes (particularly the BODMAS/precedence gap, which may
+  simply be underrepresented in the current template distribution).
+- **Systematically sweep training configurations** — learning rate, LoRA
+  rank/alpha/target modules, `beta` (KL penalty strength), and
+  `num_generations` — and compare their effect on both final accuracy and
+  training stability (reward variance, KL drift). This was not done here:
+  with access to only free-tier, time-limited, and often queued GPU
+  availability (Colab/Kaggle), and a tight overall time budget for this
+  exercise, there wasn't room to run and compare multiple full training
+  configurations end-to-end. The current configuration is a single
+  reasonable choice, not a result of a comparison.
+- **Standardize eval-time decoding** to the tuned `top_p=0.95` /
+  `temperature=0.5` setting identified in Failure Analysis #2, and re-run
+  the full before/after comparison under that setting for consistency.
+- **Add a second training seed** to distinguish training-run variance from
+  the sampling variance already measured in the 4-generations-per-question
+  metric.
+- **Try a larger base model** (e.g. 1.5B-3B parameter range) under the same
+  pipeline, to test the hypothesis in Failure Analysis #3 directly — that a
+  stronger base model gives GRPO more latent capability to amplify.
 
 ## Setup and Installation
 
 ### Prerequisites
 - Python 3.8+
-- CUDA-capable GPU (recommended for training)
+- CUDA-capable GPU (recommended for training) — this project was run on
+  free-tier Google Colab and Kaggle GPUs, not local/dedicated hardware
 - 8GB+ GPU memory (for 4-bit quantization)
 
 ### Installation
@@ -363,24 +504,34 @@ pip install torch transformers trl
 pip install datasets matplotlib wandb
 ```
 
-### Running the Training
+### Running the Training / Demo Path
 
-1. Open `src/grpo_training.ipynb` in Jupyter or VS Code
-2. Set your WandB API key for experiment tracking
-3. Run cells sequentially to:
-   - Generate synthetic dataset
-   - Load and configure the model
-   - To Run Phase 1 (skip the training trainer.train() cell and go for the very last testing section),
-   -  Phase 2 edit the prompt with run step wise step, and Phase 3 after training the model. 
-   - Train with GRPO
-   - Generate evaluation graphs
+The entire pipeline lives in `src/grpo_training.ipynb` as a single notebook
+(rather than separate `.py` scripts), specifically so it can be run
+start-to-finish in one Colab/Kaggle session without local environment setup:
+
+1. Open `src/grpo_training.ipynb` in Jupyter, Colab, Kaggle, or VS Code.
+2. Set your WandB API key for experiment tracking.
+3. The **very first cell generates the synthetic dataset** — running it
+   alone reproduces `train.jsonl`, `eval.jsonl`, and `eval_paraphrased.jsonl`
+   deterministically, independent of anything downstream.
+4. Run cells sequentially to:
+   - **Phase 1** (plain-prompt baseline): skip the `trainer.train()` cell
+     and run only the final evaluation section, against the base model.
+   - **Phase 2** (CoT baseline): edit the prompt to the step-by-step
+     variant and re-run the same evaluation section, still against the base
+     model.
+   - **Phase 3**: run `trainer.train()` (GRPO fine-tuning), then re-run the
+     evaluation section against the adapted model, and again against the
+     paraphrased eval set.
+   - Generate the evaluation graphs in `eval_graphs/`.
 
 ## Evaluation Metrics
 
 ### Scoring
 - **Correct Answer**: 1 point
 - **Incorrect Answer**: 0 points
-- **Per Question**: Mean score across N generations (N=4 for Evaluation and N = 8 for the Training)
+- **Per Question**: Mean score across N generations (N=4 for Evaluation and N=8 for Training)
 
 ### Metrics Tracked
 - Mean accuracy per question
@@ -419,4 +570,4 @@ This project is licensed under the MIT License.
 
 ---
 
-**Note**: This project demonstrates that with careful prompt engineering and targeted fine-tuning, even small language models can achieve strong performance on mathematical reasoning tasks.
+**Note**: This project demonstrates that with careful prompt engineering and targeted fine-tuning, even small language models can achieve strong performance on mathematical reasoning tasks — within the compute and time constraints of a short exercise, and with clearly stated assumptions about what a larger-scale version would need to verify further.
